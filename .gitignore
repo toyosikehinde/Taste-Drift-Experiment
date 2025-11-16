@@ -1,0 +1,50 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment folders
+venv/
+.env/
+.env*/
+.venv/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+
+# Data files (you can keep sample data in data/)
+data/*.npy
+data/*.pkl
+data/*.npz
+data/*.json
+data/*.jsonl
+data/*.csv
+# Allow sample data explicitly
+!data/sample_*
+
+# Large intermediate outputs
+*.wav
+*.mp3
+*.flac
+
+# Matplotlib cache
+.matplotlib/
+
+# VSCode or editor folders
+.vscode/
+.idea/
+
+# Build artifacts (in case you add docs later)
+build/
+dist/
+*.egg-info/
