@@ -1,26 +1,56 @@
-Tracking User Taste Drift in Music Recommendation Systems
+**Tracking User Taste Drift in Music Recommendation Systems**
 
-Understanding how a listener’s musical preferences evolve over time is central to evaluating both personalization and influence within a recommender system. This experiment introduces a framework for quantifying taste drift - the way a user’s listening center of gravity moves through the feature space as they interact with songs over days or months. The objective is to determine whether the recommender merely mirrors existing preferences or actively shapes them.
+Understanding how a listener’s musical preferences evolve over time is central to evaluating both personalization and influence within a recommender system. This experiment proposes a framework for modeling and observing taste drift the gradual movement of a listener’s “center of musical gravity” across time as they replay, like, or save songs. The objective is to determine whether recommendations simply reinforce what a listener already enjoys or play an active role in shaping new preferences.
 
-Each track in the dataset is represented as a feature vector, capturing timbral, rhythmic, and spectral information such as MFCC means, spectral centroid, roll-off, and tempo. Each listener, in turn, is modeled by a taste vector (vₜ), representing the weighted average of the audio features from the songs they have positively engaged with (through replays, saves, or likes). The taste vector updates dynamically according to an exponential moving average rule:
+**Conceptual Framework**
+Each track in the dataset is represented as a feature vector containing its acoustic and timbral descriptors such as MFCC means, spectral centroid, roll-off, flatness, and tempo. Each listener is modeled by a taste vector (vₜ), which summarizes the kind of sounds they are currently drawn to based on their interactions. When a user engages positively with a new track by replaying it, listening for more than thirty seconds, liking, or saving it nudges their taste vector slightly toward that song’s coordinates in the feature space.
+
+The update rule follows an exponential moving average model:
 
 Vt+1 =(1−α)⋅Vt +α⋅xi
 
-Here, xᵢ is the feature vector of a newly accepted track, and α (alpha) controls how strongly new interactions influence the listener’s taste. A smaller α value makes the profile stable and slow to adapt, while a larger α value allows faster changes that reflect exploratory or transient moods. This formulation mirrors the natural way people form musical habits, where repeated exposure gradually reshapes their sense of “familiar sound.”
+Here, xᵢ is the feature vector of the accepted track and α (alpha) is a memory parameter that controls how much influence new songs have compared to previous ones. A small α keeps the listener’s profile stable, reflecting consistent listening habits, while a larger α models faster-changing preferences, capturing more exploratory behavior. Over time, vₜ becomes a concise, continuous representation of a listener’s evolving taste.
 
-To measure how much a listener’s taste changes between sessions, the experiment applies two complementary metrics: Cosine Drift and KL-Divergence.
+**Quantifying Change**
 
-Cosine Drift captures the directional change in the listener’s taste vector, indicating shifts in the overall acoustic style or timbral signature of the songs they engage with. It is computed as:
+To measure how much a listener’s taste has changed, the experiment applies two complementary metrics: Cosine Drift and Kullback–Leibler (KL) Divergence.
+
+**Cosine Drift (Acoustic Directional Change)**
+
+Cosine drift quantifies how the overall “direction” of a listener’s taste vector changes between sessions. It is computed as:
 
 Driftt =1−cos(Vt ,Vt−1 )
 
-A low value of Driftₜ implies a consistent listening pattern, whereas higher values reveal notable changes, such as transitions from smooth Afrobeats to energetic house tracks or from acoustic jazz to synthesized R&B. Over longer timescales, cumulative cosine drift provides an estimate of how far a listener’s sonic identity has migrated in the feature space since the beginning of observation.
+This metric captures acoustic or timbral shifts such as moving from mellow Afrobeats to bright house, or from R&B to jazz-infused electronica. A low drift value means the listener’s sonic preferences are consistent, while higher values indicate notable stylistic transitions. Aggregating these values across sessions or weeks provides a timeline of how stable or dynamic a listener’s listening patterns are.
 
-KL-Divergence (Kullback–Leibler divergence) measures distributional change in a listener’s preferences across categorical dimensions such as genre, mood, or region. It compares how the proportions of these categories differ between two periods:
+**KL-Divergence (Categorical Distributional Change)**
+
+While cosine drift operates in continuous feature space, KL-divergence measures how the distribution of categorical preferences (e.g., genres, moods, or regions) changes over time. It is defined as:
+
 DKL (P∥Q)=i∑ P(i)logQ(i)P(i)
+​	
+Here, P(i) represents the proportion of genres in the current listening window, and Q(i) represents the proportions from the previous period. A small KL value indicates stability listeners are staying within familiar genres while a larger value signals exploration into new categories. This measure adds a semantic dimension to the drift analysis by highlighting what kinds of songs have changed rather than how they sound.
 
-Here, P(i) represents the genre distribution for the current time window and Q(i) represents the previous one. A low KL value indicates that the listener’s genre balance is stable, while a higher value shows that they are engaging with new categories or moving into unexplored regions of sound. Together, cosine drift and KL-divergence provide a nuanced view: one tracks how the sound signature changes, while the other measures what kinds of songs are driving that change.
+Together, cosine drift and KL-divergence provide a dual perspective: cosine drift reveals shifts in sound and production style, while KL-divergence reveals shifts in musical identity, genre, or mood.
 
-To test whether the recommender itself contributes to these shifts, the experiment compares two groups of listeners. The control group receives standard nearest-neighbor recommendations similar to their current taste vector, while the exploration group is exposed to a mixture of familiar and diverse tracks that differ in tempo, harmonic color, or timbral space. Interaction data such as play duration, replays, skips, likes, and saves are logged alongside snapshots of each listener’s taste vector and the features of the songs they were shown. By comparing changes in cosine drift and KL-divergence across both groups, the system can estimate whether exploration-oriented recommendations genuinely expand the listener’s taste or simply create short-term novelty.
+**Experimental Design**
 
-Daily analysis captures short-term context shifts, such as mood-driven listening changes, whereas cumulative metrics over weeks or months reveal enduring transformations in preference. The framework also supports ethical and fairness assessments, ensuring that the algorithm respects listener autonomy and diversity by balancing discovery with relevance. In this way, the system evolves from predicting what a listener might enjoy to understanding how their musical identity evolves through continued interaction.
+To test whether recommendations influence taste evolution, the experiment introduces two groups of listeners:
+* Control group: Receives standard, nearest-neighbor recommendations based on their current taste vector (vₜ). These recommendations reinforce existing listening patterns.
+* Exploration group: Receives a blend of familiar and novel tracks that differ in tempo, harmonic texture, or cultural origin. This group tests whether diversity in recommendations expands taste boundaries.
+
+All listening events are logged, capturing user_id, timestamp, track_id, policy (control or explore), and engagement type (play ≥30s, replay, like, save, skip). Alongside these, snapshots of vₜ before each exposure and the feature vector of the track are stored. This structured logging enables longitudinal analysis of how each user’s taste vector and genre distribution evolve.
+
+If the exploration group shows higher cosine drift and KL-divergence values especially when paired with increased positive engagement and replays it suggests that the system is not only predicting existing preferences but actively broadening them.
+
+**Interpretation**
+
+Short-term drift (daily or session-based) often reflects contextual changes such as mood or environment, while long-term drift (over weeks or months) reflects sustained preference shifts. The balance between the two helps characterize listener types some users maintain a steady sonic identity, while others exhibit cyclical or exploratory listening patterns.
+
+Visualizing both drift metrics as time-series curves can reveal these dynamics at a glance: cosine drift tracks acoustic movement through feature space, while KL-divergence captures the categorical reshaping of a listener’s profile. These trajectories together form a “taste map” that illustrates how the recommender interacts with human musical evolution.
+
+**Ethical and Analytical Outlook**
+
+From an ethical perspective, tracking taste drift provides insight into algorithmic influence on cultural consumption. Systems designed for exploration should encourage diversity and serendipity without steering listeners too forcefully. Monitoring both metrics over time ensures a balance between familiarity and discovery allowing users to remain the active agents of their own musical journeys.
+
+By combining continuous acoustic modeling (cosine drift) with discrete distributional analysis (KL-divergence), this experiment establishes a quantitative yet human centered method for observing how listening preferences evolve and how recommendation systems might amplify, stabilize, or transform them.
