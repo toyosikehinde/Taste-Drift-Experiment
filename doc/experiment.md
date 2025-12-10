@@ -1,56 +1,213 @@
-**Tracking User Taste Drift in Music Recommendation Systems**
+# Taste Drift Experiment Design
 
-Understanding how a listener’s musical preferences evolve over time is central to evaluating both personalization and influence within a recommender system. This experiment proposes a framework for modeling and observing taste drift the gradual movement of a listener’s “center of musical gravity” across time as they replay, like, or save songs. The objective is to determine whether recommendations simply reinforce what a listener already enjoys or play an active role in shaping new preferences.
+This document provides the complete methodological design for a taste drift experiment using realistically available datasets. It describes how user listening histories and semantic content representations of tracks can be combined to analyse how a listener’s musical preferences evolve over time and to explore potential causes of these changes. This is a design blueprint rather than a fully implemented system, due to licensing and dataset availability constraints.
 
-**Conceptual Framework**
-Each track in the dataset is represented as a feature vector containing its acoustic and timbral descriptors such as MFCC means, spectral centroid, roll-off, flatness, and tempo. Each listener is modeled by a taste vector (vₜ), which summarizes the kind of sounds they are currently drawn to based on their interactions. When a user engages positively with a new track by replaying it, listening for more than thirty seconds, liking, or saving it nudges their taste vector slightly toward that song’s coordinates in the feature space.
+---
 
-The update rule follows an exponential moving average model:
+## 1. Motivation
 
-Vt+1 =(1−α)⋅Vt +α⋅xi
+Listener preferences are not static. Over weeks and months, musical tastes shift as individuals explore new genres, respond to emotional or social contexts, or engage with recommender systems. To understand this evolution, a listener’s musical taste can be represented as a point in a semantic embedding space and tracked over time. Movement in this space reflects changing preferences.
 
-Here, xᵢ is the feature vector of the accepted track and α (alpha) is a memory parameter that controls how much influence new songs have compared to previous ones. A small α keeps the listener’s profile stable, reflecting consistent listening habits, while a larger α models faster-changing preferences, capturing more exploratory behavior. Over time, vₜ becomes a concise, continuous representation of a listener’s evolving taste.
+The purpose of the taste drift experiment is to measure how these preference representations change across time periods, and to examine what might cause those changes. This aligns with broader goals in recommendation research where temporal modelling, novelty seeking, and stability of preference are important considerations.
 
-**Quantifying Change**
+---
 
-To measure how much a listener’s taste has changed, the experiment applies two complementary metrics: Cosine Drift and Kullback–Leibler (KL) Divergence.
+## 2. Available Datasets and Roles
 
-**Cosine Drift (Acoustic Directional Change)**
+This design uses datasets that are realistically accessible to researchers:
 
-Cosine drift quantifies how the overall “direction” of a listener’s taste vector changes between sessions. It is computed as:
+### User–History Datasets (Listening Logs)
+Examples include:
+- Last.fm 1K users dataset
+- LFM-2b dataset
 
-Driftt =1−cos(Vt ,Vt−1 )
+These datasets typically include: # Taste Drift Experiment Design
 
-This metric captures acoustic or timbral shifts such as moving from mellow Afrobeats to bright house, or from R&B to jazz-infused electronica. A low drift value means the listener’s sonic preferences are consistent, while higher values indicate notable stylistic transitions. Aggregating these values across sessions or weeks provides a timeline of how stable or dynamic a listener’s listening patterns are.
+This document provides the complete methodological design for a taste drift experiment using realistically available datasets. It describes how user listening histories and semantic content representations of tracks can be combined to analyse how a listener’s musical preferences evolve over time and to explore potential causes of these changes. This is a design blueprint rather than a fully implemented system, due to licensing and dataset availability constraints.
 
-**KL-Divergence (Categorical Distributional Change)**
+---
 
-While cosine drift operates in continuous feature space, KL-divergence measures how the distribution of categorical preferences (e.g., genres, moods, or regions) changes over time. It is defined as:
+## 1. Motivation
 
-DKL (P∥Q)=i∑ P(i)logQ(i)P(i)
-​	
-Here, P(i) represents the proportion of genres in the current listening window, and Q(i) represents the proportions from the previous period. A small KL value indicates stability listeners are staying within familiar genres while a larger value signals exploration into new categories. This measure adds a semantic dimension to the drift analysis by highlighting what kinds of songs have changed rather than how they sound.
+Listener preferences are not static. Over weeks and months, musical tastes shift as individuals explore new genres, respond to emotional or social contexts, or engage with recommender systems. To understand this evolution, a listener’s musical taste can be represented as a point in a semantic embedding space and tracked over time. Movement in this space reflects changing preferences.
 
-Together, cosine drift and KL-divergence provide a dual perspective: cosine drift reveals shifts in sound and production style, while KL-divergence reveals shifts in musical identity, genre, or mood.
+The purpose of the taste drift experiment is to measure how these preference representations change across time periods, and to examine what might cause those changes. This aligns with broader goals in recommendation research where temporal modelling, novelty seeking, and stability of preference are important considerations.
 
-**Experimental Design**
+---
 
-To test whether recommendations influence taste evolution, the experiment introduces two groups of listeners:
-* Control group: Receives standard, nearest-neighbor recommendations based on their current taste vector (vₜ). These recommendations reinforce existing listening patterns.
-* Exploration group: Receives a blend of familiar and novel tracks that differ in tempo, harmonic texture, or cultural origin. This group tests whether diversity in recommendations expands taste boundaries.
+## 2. Available Datasets and Roles
 
-All listening events are logged, capturing user_id, timestamp, track_id, policy (control or explore), and engagement type (play ≥30s, replay, like, save, skip). Alongside these, snapshots of vₜ before each exposure and the feature vector of the track are stored. This structured logging enables longitudinal analysis of how each user’s taste vector and genre distribution evolve.
+This design uses datasets that are realistically accessible to researchers:
 
-If the exploration group shows higher cosine drift and KL-divergence values especially when paired with increased positive engagement and replays it suggests that the system is not only predicting existing preferences but actively broadening them.
+### User–History Datasets (Listening Logs)
+Examples include:
+- Last.fm 1K users dataset
+- LFM-2b dataset
 
-**Interpretation**
+These datasets typically include: user_id, timestamp, artist_name, track_name 
 
-Short-term drift (daily or session-based) often reflects contextual changes such as mood or environment, while long-term drift (over weeks or months) reflects sustained preference shifts. The balance between the two helps characterize listener types some users maintain a steady sonic identity, while others exhibit cyclical or exploratory listening patterns.
 
-Visualizing both drift metrics as time-series curves can reveal these dynamics at a glance: cosine drift tracks acoustic movement through feature space, while KL-divergence captures the categorical reshaping of a listener’s profile. These trajectories together form a “taste map” that illustrates how the recommender interacts with human musical evolution.
+They provide chronological sequences of listening events, which are essential for constructing time-based taste profiles.
 
-**Ethical and Analytical Outlook**
+### Content and Lyrics Datasets (Semantic Track Representations)
+Examples include:
+- Spotify metadata datasets
+- Lyrics extraction from publicly accessible APIs (when permitted)
+- Precomputed lyrics embeddings from contextual models such as all-mpnet-base-v2
 
-From an ethical perspective, tracking taste drift provides insight into algorithmic influence on cultural consumption. Systems designed for exploration should encourage diversity and serendipity without steering listeners too forcefully. Monitoring both metrics over time ensures a balance between familiarity and discovery allowing users to remain the active agents of their own musical journeys.
+These datasets provide:
+- Audio features
+- Track and artist metadata
+- Lyrics embeddings representing semantic meaning
 
-By combining continuous acoustic modeling (cosine drift) with discrete distributional analysis (KL-divergence), this experiment establishes a quantitative yet human centered method for observing how listening preferences evolve and how recommendation systems might amplify, stabilize, or transform them.
+For this design, lyrics embeddings form the semantic space in which taste drift is measured.
+
+---
+
+## 3. Data Alignment Strategy
+
+User logs and content datasets originate from different sources and must be aligned. Alignment is achieved using track metadata:
+
+1. Extract unique `(artist_name, track_name)` pairs from the listening log.
+2. Extract corresponding fields from the content dataset.
+3. Clean both sides by:
+   - Lowercasing
+   - Removing parentheses, descriptors, “remix” labels
+   - Collapsing whitespace
+4. Perform an inner join on cleaned artist and track names.
+5. Build a mapping: track_id_from_listening_log → embedding_row_index
+
+
+The result is a reduced but fully aligned dataset where each listening event corresponds to a track with a valid lyrics embedding.
+
+---
+
+## 4. Lyrics Semantic Space Construction
+
+A contextual embedding model such as **all-mpnet-base-v2** is used to create the lyrics semantic space.
+
+For each aligned track:
+
+1. Retrieve lyrics text (if available)
+2. Preprocess the lyrics:
+- Lowercase
+- Remove boilerplate repeats
+- Join lines into a single string
+3. Encode using the transformer to produce a vector: e_i ∈ ℝ^d
+4. L2-normalize embeddings to simplify similarity calculations
+
+This produces a mapping: track_id → lyrics_embedding
+
+This vector space captures emotional, thematic, and narrative properties of songs and serves as the foundation for taste drift measurement.
+
+---
+
+## 5. User Taste Profiles Over Time
+
+Using timestamps from the listening logs, user activity is segmented into discrete time buckets such as months.
+
+For a given user **u** and time period **t**:
+
+- Let **S(u, t)** be the set of tracks the user listened to in that period and for which embeddings exist.
+- Each track **i** has an embedding vector **e_i**.
+
+The user’s **taste profile** for that period is the centroid of embeddings:
+\[
+\mathbf{p}(u, t) = \frac{1}{|S(u, t)|} \sum_{i \in S(u, t)} \mathbf{e}_i
+\]
+
+Profiles are only computed if the number of tracks satisfies a minimum threshold (e.g., 10 plays). This prevents instability from very small samples.
+
+This yields a chronological sequence:
+\[
+\mathbf{p}(u, t_1),\, \mathbf{p}(u, t_2),\, \ldots,\, \mathbf{p}(u, t_T)
+\]
+Each point represents the user’s dominant lyrical preference during that month.
+
+---
+
+## 6. Measuring Taste Drift
+
+Taste drift between two consecutive periods **t** and **t+1** for user **u** is measured using cosine similarity:
+
+\[
+\text{cos\_sim}(u, t, t+1) =
+\frac{\mathbf{p}(u, t) \cdot \mathbf{p}(u, t+1)}
+{\|\mathbf{p}(u, t)\| \, \|\mathbf{p}(u, t+1)\|}
+\]
+
+Drift is defined as:
+\[
+\text{drift}(u, t, t+1) = 1 - \text{cos\_sim}(u, t, t+1)
+\]
+
+Low drift means stable lyrical preferences.  
+High drift indicates meaningful semantic change.
+
+### Optional Alternative Measure
+Tracks can be clustered into lyrical themes. For each period, compute a theme distribution **P(u, t)**, then compute:
+\[
+\mathrm{KL}(P(u, t) \| P(u, t+1))
+\]
+
+This captures changes in dominant themes rather than geometric shifts.
+
+---
+
+## 7. Analysing Causes of Taste Drift
+
+To understand why drift occurs, the experiment designs several explanatory variables:
+
+### Within-Period Diversity
+Average pairwise distance between tracks in **S(u, t)**.  
+Higher diversity can precede larger drift.
+
+### Novelty
+Average distance between new tracks in period **t+1** and the previous profile **p(u, t)**.  
+Higher novelty may indicate exploratory behaviour.
+
+### Shifts in Genre or Mood
+If genre tags exist, measure:
+- Change in distribution of genres between periods
+- Change in mood polarity or sentiment
+
+### Temporal Context
+Seasonal or situational factors derived from timestamps (e.g., summer, exam periods) can shape listening behaviour.
+
+### Modelling Drift
+For each transition:
+\[
+\text{drift}(u, t, t+1)
+\]
+is treated as the dependent variable in a regression or mixed-effects model with predictors including novelty, diversity, theme shifts, and temporal covariates.
+
+This allows hypothesis testing about what drives preference change.
+
+---
+
+## 8. Limitations and Status of This Repository
+
+A fully implemented drift system requires access to:
+- Licensed full lyrics
+- A dataset that combines user logs and lyrics
+- Rights to store or redistribute lyrics
+
+Such a combined dataset is not available within this repository’s constraints. Therefore, this document serves as a complete experiment design, aligned with available public datasets such as Last.fm logs and Spotify-like content corpora, while avoiding licensing issues.
+
+The repository focuses on documentation and conceptual pipelines rather than a full production system. The methodology presented here can be implemented in future work once appropriate datasets are accessible.
+
+---
+
+## 9. Relationship to Other Files in This Repository
+
+- `log_schema.md` describes the minimal structure of listening histories required to run the experiment.
+- `metrics.md` may contain explicit formulas and short mathematical examples for cosine drift and KL divergence.
+- `implementation.md` is reserved for pseudocode that mirrors this design using synthetic or placeholder data.
+
+This document (`experiment.md`) is the authoritative reference for the experiment design.
+
+
+
+
+
+
