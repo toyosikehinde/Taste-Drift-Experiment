@@ -7,7 +7,7 @@ Although a full implementation requires access to timestamped listening logs and
 
 ---
 
-## 📌 Project Overview
+## Project Overview
 
 Musical taste is not static. People move through different themes, moods, and genres as life changes. This project models musical taste as a **trajectory in semantic space** by:
 
