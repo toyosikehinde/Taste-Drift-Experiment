@@ -1,19 +1,30 @@
 ---
 
-## docs/log_schema.md
+# Logging Schema for Taste Drift Analysis
 
-```markdown
-# Minimal Logging Schema
+This document defines a minimal logging schema that would allow the Taste Drift Experiment to be run in a real system. It focuses on the data needed to reconstruct user taste profiles and analyse drift over time.
 
-Each impression or interaction row (CSV or JSONL):
+---
 
-- `t` (ISO timestamp)
-- `user_id`, `session_id`, `track_id`
-- `policy` ("control" | "explore")
-- `event` ("play_30s" | "replay" | "like" | "save" | "skip" | null)
-- `user_vec` (array before exposure; same dim as track vectors)
-- `track_vec` (array for the shown track)
-- optional: `rank`, `dwell_s`
+## Core Listening Log
 
-Sample JSONL:
-{"t":"2025-11-15T14:00:00Z","user_id":"u1","session_id":"s1","track_id":"t42","policy":"explore","event":"save","user_vec":[...],"track_vec":[...]}
+At minimum, the system must log one record per listening event (or per completed play) with the following fields:
+
+```text
+user_id        string   Anonymised user identifier.
+track_id       string   Unique identifier for the track.
+artist_name    string   Human-readable artist name.
+track_name     string   Human-readable track name.
+timestamp      datetime UTC timestamp of when the track was played.
+source         string   Optional: source of play (e.g., "search", "radio", "playlist").
+context_id     string   Optional: identifier for session, playlist, or station.
+
+
+# CONTENT EMBEDDINGS AND METADATA
+track_id       string   Unique track identifier (same as in listening log).
+artist_name    string   Artist name.
+track_name     string   Track name.
+album_name     string   Optional: album title.
+genre          string   Optional: coarse genre label.
+lyrics_id      string   Optional: key to a lyrics store.
+embedding_id   string   Optional: key to an embedding store.
