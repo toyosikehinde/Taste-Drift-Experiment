@@ -1,18 +1,21 @@
 # Taste-Drift-Experiment
+*A conceptual and computational framework for analysing how musical preferences evolve over time.*
 
-This repository documents an experiment to track how a listener’s musical taste evolves over time and to test whether recommendations influence that evolution. It combines a narrative report with light, self-contained code snippets that illustrate how to compute a listener taste vector, daily cosine drift in acoustic feature space, and KL-divergence over genre distributions.
+This repository presents a complete design blueprint for a **Taste Drift Experiment**, inspired by temporal preference modelling in recommender systems research. The goal of this project is to examine how a listener’s taste changes across time using listening logs and semantic song embeddings, and to explore potential drivers of those shifts.
 
-This is a documenetaion with refrence snippets not a production system or app. 
+Although a full implementation requires access to timestamped listening logs and licensed lyrics datasets, this repository documents the methodology, metrics, data schema, and minimal code needed to prototype the experiment on synthetic or privately-held datasets.
 
-## Contents
-- `experiment.md` — full narrative (methods + equations)
-- `metrics.md` — cosine drift and KL-divergence explained
-- `implementation.md` — minimal code blocks to reproduce core calculations
-- `log_schema.md` — tiny logging spec for impressions and interactions
-- `analysis_guide.md` — how to run a small analysis on the sample files
-- `snippets/` — importable .py helpers used in the docs
+---
 
-## Minimal setup
-```bash
-pip install -r requirements.txt
+## 📌 Project Overview
 
+Musical taste is not static. People move through different themes, moods, and genres as life changes. This project models musical taste as a **trajectory in semantic space** by:
+
+- Building feature representations of songs (lyrics embeddings, audio descriptors, or hybrid vectors).  
+- Constructing **time-based taste profiles** for each user.  
+- Measuring **taste drift** using cosine distance and KL-divergence.  
+- Exploring **possible causes**, such as novelty, diversity, genre shifts, or contextual factors.  
+
+The full experiment design is documented in the `doc/` folder.
+
+---
