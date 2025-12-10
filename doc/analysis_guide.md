@@ -1,7 +1,5 @@
 # Analysis Guide
 
-# Taste Drift Analysis — Unified Documentation
-
 This document provides a complete, self-contained reference for implementing and analysing taste drift using listening logs and semantic embeddings. It merges the contents of:  
 1. Metrics  
 2. Minimal implementation snippets  
