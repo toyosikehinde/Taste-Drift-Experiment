@@ -1,62 +1,163 @@
-# Minimal Implementation Snippets
+# Minimal Implementation 
 
-These examples are educational and self-contained. Vectors should be standardized with the same scaler used for track features.
+This document provides minimal, self-contained code snippets that illustrate how to compute taste profiles and drift metrics using user listening logs and precomputed track feature vectors. The code is illustrative and uses generic CSV filenames and column names.
 
-```python
-# snippets/profiles.py
+All examples assume:
+
+- Python 3
+- `pandas`
+- `numpy`
+
+Install requirements with:
+
+```bash
+pip install -r requirements.txt
+
+user_id, track_id, timestamp
+
+and an embeddings file where track_id can be mapped to a row index in an array of shape (n_tracks, d).
+
+import pandas as pd
 import numpy as np
+import json
 
-class UserProfile:
-    def __init__(self, D, alpha=0.1):
-        self.v = np.zeros(D, dtype=float)
-        self.n = 0
-        self.alpha = float(alpha)
+# Load listening log
+log_df = pd.read_csv("data/listening_log.csv")
+log_df["timestamp"] = pd.to_datetime(log_df["timestamp"], utc=True)
 
-    def update_on_accept(self, x_i):
-        if self.n == 0:
-            self.v = x_i.astype(float).copy()
-        else:
-            self.v = (1 - self.alpha) * self.v + self.alpha * x_i
-        norm = np.linalg.norm(self.v) + 1e-12
-        self.v = self.v / norm
-        self.n += 1
+# Load embeddings (for example, lyrics or hybrid embeddings)
+embeddings = np.load("data/track_embeddings.npy")  # shape (n_tracks, d)
 
-# snippets/drift_metrics.py
-import numpy as np
+# Mapping from track_id to row index in embeddings
+with open("data/track_id_to_idx.json", "r") as f:
+    track_id_to_idx = json.load(f)
 
-def cosine(u, v):
-    num = float(np.dot(u, v))
-    den = float(np.linalg.norm(u) * np.linalg.norm(v) + 1e-12)
-    return num / den
+# MONTHLY EMBEDDING COMPUTATION
+from typing import Dict, List
 
-def cosine_drift(v_prev, v_curr):
-    return 1.0 - cosine(v_prev, v_curr)
+def add_month_bucket(df: pd.DataFrame,
+                     time_col: str = "timestamp") -> pd.DataFrame:
+    df = df.copy()
+    df["month"] = df[time_col].dt.to_period("M").dt.to_timestamp()
+    return df
 
-def kl_divergence(p, q, eps=1e-10):
-    p = np.asarray(p, dtype=float); q = np.asarray(q, dtype=float)
-    p = p / (p.sum() + eps); q = q / (q.sum() + eps)
-    return float(np.sum(np.where(p > 0, p * np.log((p + eps)/(q + eps)), 0.0)))
+log_df = add_month_bucket(log_df)
+
+def compute_user_month_profiles(df: pd.DataFrame,
+                                embeddings: np.ndarray,
+                                track_id_to_idx: Dict[str, int],
+                                user_col: str = "user_id",
+                                track_col: str = "track_id",
+                                bucket_col: str = "month",
+                                min_tracks: int = 5) -> pd.DataFrame:
+    rows: List[dict] = []
+    grouped = df.groupby([user_col, bucket_col])
+
+    for (user, month), group in grouped:
+        idxs = []
+        for tid in group[track_col]:
+            if tid in track_id_to_idx:
+                idxs.append(track_id_to_idx[tid])
+
+        if len(idxs) < min_tracks:
+            continue  # skip buckets with too few tracks
+
+        arr = embeddings[np.array(idxs)]
+        centroid = arr.mean(axis=0)
+
+        rows.append({
+            user_col: user,
+            bucket_col: month,
+            "profile": centroid,
+            "n_tracks": len(idxs),
+        })
+
+    return pd.DataFrame(rows)
+
+profiles_df = compute_user_month_profiles(
+    log_df,
+    embeddings=embeddings,
+    track_id_to_idx=track_id_to_idx,
+)
+
+# COMPUTE COSINE DRIFT BETWEEN CONSECUTIVE MONTHS
+def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+    denom = np.linalg.norm(a) * np.linalg.norm(b)
+    if denom == 0:
+        return 0.0
+    return float(np.dot(a, b) / denom)
+
+def compute_cosine_drift(profiles: pd.DataFrame,
+                         user_col: str = "user_id",
+                         bucket_col: str = "month") -> pd.DataFrame:
+    rows: List[dict] = []
+
+    for user, group in profiles.groupby(user_col):
+        group = group.sort_values(bucket_col).reset_index(drop=True)
+        if len(group) < 2:
+            continue
+
+        for i in range(len(group) - 1):
+            p_prev = group.loc[i, "profile"]
+            p_next = group.loc[i + 1, "profile"]
+
+            cos_sim = cosine_similarity(p_prev, p_next)
+            drift = 1.0 - cos_sim
+
+            rows.append({
+                user_col: user,
+                "t_prev": group.loc[i, bucket_col],
+                "t_next": group.loc[i + 1, bucket_col],
+                "cos_sim": cos_sim,
+                "drift": drift,
+                "n_prev": group.loc[i, "n_tracks"],
+                "n_next": group.loc[i + 1, "n_tracks"],
+            })
+
+    return pd.DataFrame(rows)
+
+drift_df = compute_cosine_drift(profiles_df)
+drift_df.head()
+
+#COMPUTING SIMPLE THEME DISTRIBUTION AND KL-DIVERGENCE
+from collections import Counter
+
+# Example: a small mapping from track_id to theme label
+# In practice, this might be loaded from a CSV or derived from clustering.
+track_to_theme = {
+    "track_1": "happy",
+    "track_2": "sad",
+    "track_3": "party",
+    # ...
+}
+
+def theme_distribution(df: pd.DataFrame,
+                       track_col: str = "track_id") -> Dict[str, float]:
+    labels = []
+    for tid in df[track_col]:
+        if tid in track_to_theme:
+            labels.append(track_to_theme[tid])
+    if not labels:
+        return {}
+
+    counts = Counter(labels)
+    total = sum(counts.values())
+    return {k: v / total for k, v in counts.items()}
+
+def kl_divergence(p: Dict[str, float],
+                  q: Dict[str, float],
+                  eps: float = 1e-8) -> float:
+    # make sure all keys are in both distributions
+    keys = set(p.keys()) | set(q.keys())
+    kl = 0.0
+    for k in keys:
+        p_k = p.get(k, 0.0) + eps
+        q_k = q.get(k, 0.0) + eps
+        kl += p_k * np.log(p_k / q_k)
+    return float(kl)
 
 
-# snippets/quick_eval.py
-import json, numpy as np
-from .profiles import UserProfile
-from .drift_metrics import cosine_drift, kl_divergence
+---
 
-def daily_cosine_drift(user_vectors_by_day):
-    # dict date -> v_t (np.array)
-    dates = sorted(user_vectors_by_day.keys())
-    out = []
-    for d_prev, d_curr in zip(dates[:-1], dates[1:]):
-        out.append((d_curr, cosine_drift(user_vectors_by_day[d_prev],
-                                         user_vectors_by_day[d_curr])))
-    return out
 
-def weekly_kl_divergence(genre_hist_by_week):
-    # dict 'YYYY-WW' -> list/array of genre probs
-    weeks = sorted(genre_hist_by_week.keys())
-    out = []
-    for w_prev, w_curr in zip(weeks[:-1], weeks[1:]):
-        out.append((w_curr, kl_divergence(genre_hist_by_week[w_curr],
-                                          genre_hist_by_week[w_prev])))
-    return out
+ 
